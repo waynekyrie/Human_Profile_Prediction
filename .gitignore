@@ -1,0 +1,7 @@
+Human_Prediction.code-workspace
+Data_Collection/
+Predictor/models/
+*.pyc
+Predictor/results/
+*.pth
+*.tar
