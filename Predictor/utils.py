@@ -57,6 +57,40 @@ def inverse_scale_data(data, data_col, scaler):
     data_inverse = scaler.inverse_transform(np.array(data).reshape(-1, data_col))
     return data_inverse
 
+
+def calculate_rmse(test_data, actual_predictions):
+    count = 0
+    error_sum_l = 0
+    error_sum_r = 0
+    data_len = len(test_data)
+    pred_step = actual_predictions.shape[1]
+
+    for i in range(data_len):
+        for j in range(pred_step):
+            pred_l = actual_predictions[i, j, :3]
+            pred_r = actual_predictions[i, j, 3:]
+            try:
+                ground_truth_l = test_data[i+j+1, :3]
+                ground_truth_r = test_data[i+j+1, 3:]
+            except Exception as e:
+                continue
+            #print(pred, ground_truth)
+            error_l = L2_norm(pred_l, ground_truth_l)
+            error_r = L2_norm(pred_r, ground_truth_r)
+            #print(error)
+            error_sum_l += error_l
+            error_sum_r += error_r
+            count += 1
+
+    return error_sum_l/count, error_sum_r/count
+
+def L2_norm(a, b):
+    n = 0
+    for i in range(len(a)):
+        n += np.square(a[i]-b[i])
+    norm = np.sqrt(n)
+    return norm
+
 def visualize_predictions(test_data, actual_predictions, predict_step, input_step):
     # Visualize Results
     fig, axs = plt.subplots(6) # visualize lx, rx, ly, ry, lz, rz
@@ -72,7 +106,7 @@ def visualize_predictions(test_data, actual_predictions, predict_step, input_ste
         axs[0].plot(actual_predictions[:, :, 0], label='Predictions')
     else:
         for i in range(input_step, test_data_size, predict_step+5):
-            x = np.arange(i, i+predict_step, 1)
+            x = np.arange(i+1, i+1+predict_step, 1)
             if(i == input_step):
                 axs[0].plot(x, actual_predictions[i, :, 0], label='Predictions')
             else:
@@ -87,7 +121,7 @@ def visualize_predictions(test_data, actual_predictions, predict_step, input_ste
         axs[1].plot(actual_predictions[:, :, 3])
     else:
         for i in range(input_step, test_data_size, predict_step+5):
-            x = np.arange(i, i+predict_step, 1)
+            x = np.arange(i+1, i+1+predict_step, 1)
             if(i == input_step):
                 axs[1].plot(x, actual_predictions[i, :, 3])
             else:
@@ -102,7 +136,7 @@ def visualize_predictions(test_data, actual_predictions, predict_step, input_ste
         axs[2].plot(actual_predictions[:, :, 1])
     else:
         for i in range(input_step, test_data_size, predict_step+5):
-            x = np.arange(i, i+predict_step, 1)
+            x = np.arange(i+1, i+1+predict_step, 1)
             axs[2].plot(x, actual_predictions[i, :, 1])
 
     axs[3].set(ylabel='Right Y Position')
@@ -113,7 +147,7 @@ def visualize_predictions(test_data, actual_predictions, predict_step, input_ste
         axs[3].plot(actual_predictions[:, :, 4])
     else:
         for i in range(input_step, test_data_size, predict_step+5):
-            x = np.arange(i, i+predict_step, 1)
+            x = np.arange(i+1, i+1+predict_step, 1)
             axs[3].plot(x, actual_predictions[i, :, 4])
 
     # Plot Z
@@ -125,7 +159,7 @@ def visualize_predictions(test_data, actual_predictions, predict_step, input_ste
         axs[4].plot(actual_predictions[:, :, 2])
     else:
         for i in range(input_step, test_data_size, predict_step+5):
-            x = np.arange(i, i+predict_step, 1)
+            x = np.arange(i+1, i+1+predict_step, 1)
             axs[4].plot(x, actual_predictions[i, :, 2])
 
     axs[5].set(xlabel='Time', ylabel='Right Z Position')
@@ -136,7 +170,7 @@ def visualize_predictions(test_data, actual_predictions, predict_step, input_ste
         axs[5].plot(actual_predictions[:, :, 5])
     else:
         for i in range(input_step, test_data_size, predict_step+5):
-            x = np.arange(i, i+predict_step, 1)
+            x = np.arange(i+1, i+1+predict_step, 1)
             axs[5].plot(x, actual_predictions[i, :, 5])
 
 def show_visualizations():

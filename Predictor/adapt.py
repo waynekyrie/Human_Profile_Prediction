@@ -12,17 +12,17 @@ scale_data_set = [[0, 0, 1], [0, 1, 0], [0, 2, 0], [0, 2, 1],
 
 test_data_set = [[1, 0, 0]]
 
-lamda = 0.9 # Forgetting factor
+lamda = 1 # Forgetting factor
 
 sequence_length = 30
 input_size = 6 # dimension of input
 hidden_size = 128
 num_layers = 1
-output_step = 1 # predict step
+output_step = 30 # predict step
 output_size = 6 # dimension of output
 learning_rate = 0.001
 
-model_path = 'pred1/model199.tar'
+model_path = 'pred30/model121.tar'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Load data
@@ -32,7 +32,6 @@ test_data, test_data_col = util.load_data(test_data_set)
 # Construct scaler
 scaler = MinMaxScaler(feature_range=(-5, 5))
 scaler.fit(scale_data_squeezed)
-#scaler.data_min_, scaler.data_max_ = util.fit_scaler()
 test_data_normalized = util.scale_data(test_data, test_data_col, scaler)
 
 # Load model
@@ -60,7 +59,8 @@ for test_idx in range(len(test_data_set)):
     ground_truth = test_data_normalized[test_idx][:, :test_data_col].tolist()
     test_data_size = len(test_data[test_idx])
     test_output = []
-    for i in range(100):#test_data_size):
+    for i in range(test_data_size):
+        test_inputs.append(test_data_normalized[test_idx][i, :test_data_col].tolist())
         seq = torch.FloatTensor(test_inputs[-sequence_length:]).view(1, sequence_length, input_size).to(device)
         with torch.no_grad():
             model.x_pre = x_pre
@@ -69,43 +69,38 @@ for test_idx in range(len(test_data_set)):
             param_pre = model.state_dict()['linear.weight'][:, :].cpu()
             upper = np.matmul(np.matmul(np.matmul(F_pre, x_pre), x_pre.T), F_pre)
             bottom = np.matmul(np.matmul(x_pre.T, F_pre), x_pre)
-            #print(upper)
-            #print(bottom)
-            #print(upper/bottom)
-            #print()
             Fk = 1/lamda*(F_pre-upper/(lamda+bottom))
 
             model.x_pre = x_pre
             predict, xt = model(seq)
 
-            #print(predict)
-            #print(np.matmul(x_pre.T, param_pre.T)+bias.cpu())
-
+            adapt = 1
             try:
-                cur_measurement = np.asarray(ground_truth)[i:i+output_step, :test_data_col]-np.asarray(bias)
-                cur_predict = np.asarray(predict.cpu())-np.asarray(bias)#np.asarray(test_output[-1])
-                #cur_measurement=util.inverse_scale_data(cur_measurement, test_data_col, scaler)
-                #cur_predict = util.inverse_scale_data(cur_predict, test_data_col, scaler)
-                #noise = np.random.normal(scale=0.001, size=output_step*output_size)
-                #noise = np.reshape(noise, (1, output_step*output_size))
-                #cur_measurement += noise
-
+                cur_measurement = np.asarray(ground_truth)[i-output_step+1:i+1, :test_data_col]
+                cur_measurement = np.flip(cur_measurement, 0)
+                cur_predict = np.asarray(predict.cpu())#np.asarray(test_output[-1])
+                
                 et = cur_measurement - cur_predict
                 et = np.reshape(et, (1, output_step*output_size))
-                #print(et)
-                #print()
-                
+                noise = np.random.normal(size=(output_step, output_size))*0.1
+                '''noise = util.scale_data(noise, output_size, scaler)
+                for idx in range(len(noise)):
+
+                    noise[idx] = np.asarray(noise[idx])
+                noise = np.asarray(noise) '''
+                noise = noise.reshape((1, output_size*output_step))
+                et[6:] += noise[6:]
+
             except Exception as e:
+                adapt = 0
                 print(e)
                 print("prediction step not enough!")
                 et = np.zeros((1, output_step*output_size))
-
-            new_param = param_pre + np.matmul(np.matmul(Fk, x_pre), et).T
-            model.state_dict()['linear.weight'][:, :] = new_param[:, :]
-
-            
-            x_pre = np.asarray(xt)#+noise
-            F_pre = Fk
+            if(adapt):
+                new_param = param_pre + np.matmul(np.matmul(Fk, x_pre), et).T
+                model.state_dict()['linear.weight'][:, :] = new_param[:, :]
+                F_pre = Fk
+            x_pre = np.asarray(xt)
             
             cur_predict = []
             for l in range(output_step):
@@ -113,13 +108,12 @@ for test_idx in range(len(test_data_set)):
                 for j in range(output_size):
                     step_predict.append(predict[l, j].item())
                 cur_predict.append(step_predict)
-
             test_output.append(cur_predict)
-            test_inputs.append(test_data_normalized[test_idx][i, :test_data_col].tolist())
-    test_data_size = i+1
     actual_predictions = util.inverse_scale_data(test_output, test_data_col, scaler)
     actual_predictions = actual_predictions.reshape(test_data_size, output_step, output_size)
     
+    error_l, error_r = util.calculate_rmse(test_data[test_idx], actual_predictions)
+    print(error_l, error_r)
     # Visualize Results
     util.visualize_predictions(test_data[test_idx][:test_data_size], actual_predictions, output_step, sequence_length)
 

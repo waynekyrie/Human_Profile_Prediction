@@ -24,7 +24,7 @@ learning_rate = 0.001
 
 save_model = True # If true, save trained model every 20 epoch
 load_saved_model = True # If true, load model and skip training
-model_path = 'pred1/model199.tar'##'pred20/model121.tar'#'pred10/model141.tar'#'pred5/model181.tar'#
+model_path = 'pred1/model199.tar'##'pred20/model121.tar'#'pred10/model141.tar'#'pred5/model181.tar'#'pred30/model121.tar'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Load data
