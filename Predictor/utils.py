@@ -40,6 +40,11 @@ def load_data_squeeze(data_set, data_col):
     data_all = data_all[1:, :]
     return data_all
 
+def fit_scaler():
+    data_max = np.array([0.35, 0.2, 0.95, 0.05, 0.2, 0.95])
+    data_min = np.array([-0.15, -0.2, 0.4, -0.3, -0.15, 0.4])
+    return data_min, data_max
+
 def scale_data(data_all, data_col, scaler):
     data_normalized_all = []
     for data in data_all:
